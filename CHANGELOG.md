@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 - `cts set-sync-folder [PATH] [--save]` writes the active project's `cds-sync-folder` property through the daemon. Omitting `PATH` automatically selects the saved project directory (`.`); explicit `./...` paths remain project-relative, while absolute paths are accepted directly.
 - The response reports both stored and resolved paths and calls out unsaved project state. `--save` persists the setting, with the same warning as import that saving also commits other pending IDE edits.
 
+**Relative sync-folder paths now resolve consistently:**
+
+- Every non-absolute sync-folder path is resolved against the saved `.project` file's directory across daemon, menu, external-UI, discovery, and snapshooter entry points. On Windows, `../sync` and `./../sync` now select the same directory, so they read the same sync-mode settings and produce the same text-first layout.
+
 ---
 
 ### Version 3.1.1 (2026-08-17)
