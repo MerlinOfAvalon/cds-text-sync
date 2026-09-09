@@ -37,6 +37,18 @@ class DummyProject:
     pass
 
 
+class ProjectWithSyncFolder:
+    path = r"C:\Projects\Demo\Demo.project"
+
+    def __init__(self, sync_folder):
+        self.info = type(
+            "Info", (), {"values": {"cds-sync-folder": sync_folder}}
+        )()
+
+    def get_project_info(self):
+        return self.info
+
+
 class DummyText:
     def __init__(self, text):
         self.text = text
@@ -191,6 +203,18 @@ def test_default_preset_path_uses_sync_folder(monkeypatch):
     path = ps._default_preset_path(DummyProject(), "speed tuning")
 
     assert path == r"C:\Sync\.dump\snapshots\speed-tuning.json"
+
+
+def test_default_preset_path_resolves_parent_relative_sync_folder():
+    direct_parent = ps._default_preset_path(
+        ProjectWithSyncFolder(r"..\sync"), "speed tuning"
+    )
+    dotted_parent = ps._default_preset_path(
+        ProjectWithSyncFolder(r".\..\sync"), "speed tuning"
+    )
+
+    expected = r"C:\Projects\sync\.dump\snapshots\speed-tuning.json"
+    assert direct_parent == dotted_parent == expected
 
 
 def test_ensure_default_snapshot_dir_creates_directory(monkeypatch, tmp_path):

@@ -25,6 +25,8 @@ if _IDE_BRIDGE not in sys.path:
     sys.path.insert(0, _IDE_BRIDGE)
 
 import ide_daemon_state as state
+import ide_daemon_helpers as helpers
+import codesys_utils
 
 
 class _LowerPathProject(object):
@@ -74,3 +76,63 @@ def test_missing_path_returns_empty_string():
 
 def test_raising_attribute_falls_through():
     assert state._project_file_path(_RaisingProject()) == r"E:\fallback\Fallback.project"
+
+
+class _Info(object):
+    def __init__(self, sync_folder):
+        self.values = {"cds-sync-folder": sync_folder}
+
+
+class _ConfiguredProject(object):
+    def __init__(self, path, sync_folder):
+        self.path = path
+        self.info = _Info(sync_folder)
+
+    def get_project_info(self):
+        return self.info
+
+
+class _Projects(object):
+    def __init__(self, project):
+        self.primary = project
+
+
+def test_parent_relative_forms_resolve_to_the_same_directory(monkeypatch, tmp_path):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    project = _ConfiguredProject(str(project_dir / "Demo.project"), "../sync")
+    projects = _Projects(project)
+    monkeypatch.setattr(
+        sys,
+        "_codesys_daemon_loop",
+        {"projects": projects},
+        raising=False,
+    )
+
+    direct_parent, direct_error = helpers._get_sync_folder()
+    project.info.values["cds-sync-folder"] = "./../sync"
+    dotted_parent, dotted_error = helpers._get_sync_folder()
+
+    expected = os.path.normpath(str(tmp_path / "sync"))
+    assert direct_error is None
+    assert dotted_error is None
+    assert direct_parent == dotted_parent == expected
+
+
+def test_legacy_operations_use_the_same_parent_relative_resolution(
+    monkeypatch, tmp_path
+):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    project = _ConfiguredProject(str(project_dir / "Demo.project"), "../sync")
+    projects = _Projects(project)
+    monkeypatch.setattr(codesys_utils, "resolve_projects", lambda *args: projects)
+
+    direct_parent, direct_error = codesys_utils.load_base_dir()
+    project.info.values["cds-sync-folder"] = "./../sync"
+    dotted_parent, dotted_error = codesys_utils.load_base_dir()
+
+    expected = os.path.normpath(str(tmp_path / "sync"))
+    assert direct_error is None
+    assert dotted_error is None
+    assert direct_parent == dotted_parent == expected

@@ -83,15 +83,19 @@ def test_explicit_unicode_absolute_path_is_stored_without_saving(monkeypatch, tm
     assert project.save_calls == 0
 
 
-def test_bare_relative_path_is_rejected(monkeypatch, tmp_path):
-    project = _Project(str(tmp_path / "Demo.project"))
+def test_parent_relative_path_is_anchored_to_project_directory(monkeypatch, tmp_path):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    project = _Project(str(project_dir / "Demo.project"))
     _install_project(monkeypatch, project)
 
-    result = handlers._cmd_set_sync_folder({"path": "sync"})
+    result = handlers._cmd_set_sync_folder({"path": "../sync"})
 
-    assert result["ok"] is False
-    assert "start with './'" in result["error"]
-    assert "cds-sync-folder" not in project.info.values
+    assert result["ok"] is True
+    assert project.info.values["cds-sync-folder"] == os.path.normpath("../sync")
+    assert result["data"]["resolved_sync_folder"] == os.path.normpath(
+        str(tmp_path / "sync")
+    )
 
 
 def test_automatic_path_requires_a_saved_project(monkeypatch):

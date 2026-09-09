@@ -129,6 +129,20 @@ def test_project_sync_folder_resolves_relative_property():
     assert path == os.path.normpath(r"C:\Projects\Demo\sync")
 
 
+def test_project_sync_folder_treats_parent_relative_forms_equally():
+    launcher = _load_shared()
+
+    direct_parent, direct_error = launcher.project_sync_folder(_Project(r"..\sync"))
+    dotted_parent, dotted_error = launcher.project_sync_folder(
+        _Project(r".\..\sync")
+    )
+
+    expected = os.path.normpath(r"C:\Projects\sync")
+    assert direct_error is None
+    assert dotted_error is None
+    assert direct_parent == dotted_parent == expected
+
+
 def test_project_sync_folder_reports_when_unconfigured():
     launcher = _load_shared()
 
