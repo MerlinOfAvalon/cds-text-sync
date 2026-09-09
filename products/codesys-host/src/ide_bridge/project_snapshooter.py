@@ -21,6 +21,8 @@ import time
 import ide_export_snapshot
 import ide_online_helpers as _helpers
 import ide_runtime_common
+from ide_daemon_state import _project_file_path
+from codesys_utils import _resolve_project_path
 
 
 class SnapshotOnlineError(RuntimeError):
@@ -77,24 +79,7 @@ def _resolve_log_sync_folder():
             except Exception:
                 proj = None
         if proj is not None:
-            try:
-                pi = proj.get_project_info()
-            except Exception:
-                pi = None
-            if pi is None:
-                try:
-                    pi = proj.project_info
-                except Exception:
-                    pi = None
-            if pi is not None:
-                values = getattr(pi, "values", pi)
-                try:
-                    sync = values["cds-sync-folder"]
-                except Exception:
-                    try:
-                        sync = values.get("cds-sync-folder", "")
-                    except Exception:
-                        sync = ""
+            sync = _sync_folder(proj)
     except Exception:
         sync = ""
     _SNAPSHOOTER_SYNC = sync or ""
@@ -321,7 +306,13 @@ def _read_project_property(project, key):
 
 
 def _sync_folder(project):
-    return _read_project_property(project, "cds-sync-folder")
+    configured = _read_project_property(project, "cds-sync-folder")
+    if not configured:
+        return ""
+    resolved, _is_relative = _resolve_project_path(
+        configured, _project_file_path(project)
+    )
+    return resolved or ""
 
 
 def _safe_filename(label):

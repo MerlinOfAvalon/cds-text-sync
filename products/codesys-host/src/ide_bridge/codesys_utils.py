@@ -7,6 +7,33 @@ import os
 import sys
 
 
+def _resolve_project_path(path, project_file):
+    """Normalize *path* and anchor every relative form to *project_file*.
+
+    Returns ``(resolved_path, is_relative)``.  ``resolved_path`` is ``None``
+    when a relative path cannot be anchored because the project has no saved
+    file path.
+
+    Relative paths are defined by ``os.path.isabs`` rather than by a ``./``
+    prefix.  In particular, ``../sync`` and ``./../sync`` must resolve to the
+    same directory.
+    """
+    try:
+        text_type = unicode
+    except NameError:
+        text_type = str
+
+    value = text_type(path or "").strip()
+    value = value.replace("/", os.sep).replace("\\", os.sep)
+    is_relative = not os.path.isabs(value)
+    if is_relative:
+        project_file = text_type(project_file or "").strip()
+        if not project_file:
+            return None, True
+        value = os.path.join(os.path.dirname(project_file), value)
+    return os.path.normpath(value), is_relative
+
+
 def safe_str(value):
     if value is None:
         return ""
@@ -137,15 +164,13 @@ def load_base_dir():
         return None, "Project sync directory is not set. Run Project_directory.py first."
 
     base_dir = safe_str(base_dir).strip()
-    is_relative = base_dir == "." or base_dir.startswith("./") or base_dir.startswith(".\\")
-    if is_relative:
-        projects_obj = resolve_projects()
-        project = projects_obj.primary if projects_obj else None
-        project_path = safe_str(getattr(project, "path", ""))
-        if not project_path:
-            return None, "Cannot resolve relative sync directory: project path is not available."
-        project_dir = os.path.dirname(project_path)
-        base_dir = os.path.normpath(os.path.join(project_dir, base_dir.replace("/", os.sep).replace("\\", os.sep)))
+    projects_obj = resolve_projects()
+    project = projects_obj.primary if projects_obj else None
+    base_dir, is_relative = _resolve_project_path(
+        base_dir, safe_str(getattr(project, "path", ""))
+    )
+    if is_relative and not base_dir:
+        return None, "Cannot resolve relative sync directory: project path is not available."
 
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)

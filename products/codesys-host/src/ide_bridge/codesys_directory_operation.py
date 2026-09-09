@@ -153,7 +153,7 @@ def set_base_directory(runtime, projects_obj):
     selected_path = selected_path.replace('/', os.sep).replace('\\', os.sep)
 
     # Check if path is relative
-    is_relative = selected_path.startswith('.' + os.sep) or selected_path == '.'
+    is_relative = not os.path.isabs(selected_path)
 
     # Save strictly to project properties
     try:
